@@ -1,7 +1,7 @@
 module CubicSplineNR
 
-using ForwardDiff
 using Compat
+using ForwardDiff
 
 include("wrap_spline1.jl")
 
