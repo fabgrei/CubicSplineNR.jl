@@ -94,11 +94,11 @@ function interp_level{T<:Float64, CS <: CubicSpline{T}}(cs::CS, x::ForwardDiff.D
     ForwardDiff.Dual(y[1]::T, yp[1]::T * ForwardDiff.partials(x))
 end
 
-function(itp::ImmutableCubicSpline{T})(x::T) where T <: Real
+function(itp::ImmutableCubicSpline{T<:Real})(x::T) #where T <: Real
     interp_level(itp, x)
 end
 
-function(itp::MutableCubicSpline{T})(x::T; update::Bool=true) where T <: Real
+function(itp::MutableCubicSpline{T<:Real})(x::T; update::Bool=true) #where T <: Real
     if update && itp.dirty
         update!(itp, itp.fx)
     end
