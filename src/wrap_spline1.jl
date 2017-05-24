@@ -1,13 +1,13 @@
-abstract type CubicSpline{T <: Real} end
+@compat abstract type CubicSpline{T <: Real} end
 
-struct ImmutableCubicSpline{T<:Real} <: CubicSpline{T}
+immutable ImmutableCubicSpline{T<:Real} <: CubicSpline{T}
     x::Vector{T}
     fx::Vector{T}
     fdp::Vector{T}
     npts::Ref{Cint}
 end
 
-mutable struct MutableCubicSpline{T<:Real} <: CubicSpline{T}
+type MutableCubicSpline{T<:Real} <: CubicSpline{T}
     x::Vector{T}
     fx::Vector{T}
     fdp::Vector{T}
@@ -35,6 +35,17 @@ end
 
 function update!(cs::MutableCubicSpline, fx::Vector{Float64})
     cs.fdp .= 0.0
+    cs.fx .= fx .+ 0.0
+    ccall((:__procedures_MOD_dodp, spline_lib),
+       Void,
+       (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}),
+          cs.x, cs.fx, cs.fdp, cs.npts)
+    cs.dirty = false
+end
+
+function update!(cs::MutableCubicSpline, x::Vector{Float64}, fx::Vector{Float64})
+    cs.fdp .= 0.0
+    cs.x .= x .+ 0.0
     cs.fx .= fx .+ 0.0
     ccall((:__procedures_MOD_dodp, spline_lib),
        Void,
