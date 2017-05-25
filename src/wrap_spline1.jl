@@ -76,23 +76,24 @@ function interp_level{CS <: CubicSpline{Float64}}(cs::CS, x::Float64)
     y[1]::Float64
 end
 
-# function interp_level{T<:Float64, CS <: CubicSpline{T}}(cs::CS, x::ForwardDiff.Dual{T})
+#function interp_level{T<:Float64, CS <: CubicSpline{T}}(cs::CS, x::ForwardDiff.Dual{T})
+function interp_level{T<:Float64, CS <: CubicSpline{Float64}}(cs::CS, x::ForwardDiff.Dual{T})
 
-#     ny = Ref{Cint}(1)
-#     nyp = Ref{Cint}(1)
-#     nydp = Ref{Cint}(0)
+    ny = Ref{Cint}(1)
+    nyp = Ref{Cint}(1)
+    nydp = Ref{Cint}(0)
 
-#     point = Ref{Cdouble}(ForwardDiff.value(x))
+    point = Ref{Cdouble}(ForwardDiff.value(x))
 
-#     y = zeros(1)
-#     yp = zeros(1)
-#     ydp = zeros(1)
+    y = zeros(1)
+    yp = zeros(1)
+    ydp = zeros(1)
     
-#     ccall((:__procedures_MOD_interp, "spline1"), Void,
-# (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
-#     point, cs.x, cs.fx, cs.fdp, y, yp, ydp, ny, nyp, nydp, cs.npts)
-#     ForwardDiff.Dual(y[1]::T, yp[1]::T * ForwardDiff.partials(x))
-# end
+    ccall((:__procedures_MOD_interp, "spline1"), Void,
+(Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
+    point, cs.x, cs.fx, cs.fdp, y, yp, ydp, ny, nyp, nydp, cs.npts)
+    ForwardDiff.Dual(y[1]::T, yp[1]::T * ForwardDiff.partials(x))
+end
 
 function(itp::ImmutableCubicSpline)(x::Real) #where T <: Real
     interp_level(itp, x)
