@@ -17,15 +17,30 @@ end
 
 const spline_lib = Pkg.dir()*"/CubicSplineNR/lib/spline1"
 
-function CubicSpline(x::Vector{Float64}, fx::Vector{Float64}; mutable::Bool=false)
-    N = length(x)
-    npts = Ref{Cint}(N)
-    fdp = zeros(N)
-   
+"""
+    _dodp!(...)
+
+    calls Fortran function from Numerical Recipes, provided by Tony
+    Smith
+
+    It computes the second derivatives needed for calculating the
+    cubic spline interpolation.
+"""
+function _dodp!(x, fx, fdp, npts)
     ccall((:__procedures_MOD_dodp, spline_lib),
        Void,
        (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}),
        x, fx, fdp, npts)
+end
+
+
+function CubicSpline(x::Vector{Float64}, fx::Vector{Float64}; mutable::Bool=false)
+    N = length(x)
+    npts = Ref{Cint}(N)
+    fdp = zeros(N)
+
+    _dodp!(x, fx, fdp, npts)
+
     if mutable
         return MutableCubicSpline(copy(x), copy(fx), fdp, npts, false)
     else
@@ -36,10 +51,9 @@ end
 function update!(cs::MutableCubicSpline, fx::Vector{Float64})
     cs.fdp .= 0.0
     cs.fx .= fx .+ 0.0
-    ccall((:__procedures_MOD_dodp, spline_lib),
-       Void,
-       (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}),
-          cs.x, cs.fx, cs.fdp, cs.npts)
+
+    dodp!(cs.x, cs.fx, cs.fdp, cs.npts)
+
     cs.dirty = false
 end
 
@@ -47,10 +61,9 @@ function update!(cs::MutableCubicSpline, x::Vector{Float64}, fx::Vector{Float64}
     cs.fdp .= 0.0
     cs.x .= x .+ 0.0
     cs.fx .= fx .+ 0.0
-    ccall((:__procedures_MOD_dodp, spline_lib),
-       Void,
-       (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}),
-          cs.x, cs.fx, cs.fdp, cs.npts)
+
+    dodp!(cs.x, cs.fx, cs.fdp, cs.npts)
+
     cs.dirty = false
 end
 
@@ -59,21 +72,34 @@ end
 #     cs.dirty = true
 # end
 
-function interp_level{CS <: CubicSpline{Float64}}(cs::CS, x::Float64)
-    ny = Ref{Cint}(1)
-    nyp = Ref{Cint}(0)
-    nydp = Ref{Cint}(0)
+function _interp!(point::Float64,
+                 x::Vector, fx::Vector, fdp::Vector, npts,
+                 level::Int, deriv::Int, second::Int,
+                 y::Vector{Float64}, yp::Vector{Float64}, ydp::Vector{Float64})
+    ny = Ref{Cint}(level)
+    nyp = Ref{Cint}(deriv)
+    nydp = Ref{Cint}(second)
 
+    point = Ref{Cdouble}(point)
+
+    ccall((:__procedures_MOD_interp, "spline1"), Void,
+(Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
+    point, x, fx, fdp, y, yp, ydp, ny, nyp, nydp, npts)
+end
+
+
+function interp_level{CS <: CubicSpline{Float64}}(cs::CS, x::Float64)
     point = Ref{Cdouble}(x)
 
     y = zeros(1)
     yp = zeros(1)
     ydp = zeros(1)
-    
-    ccall((:__procedures_MOD_interp, "spline1"), Void,
-(Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
-    point, cs.x, cs.fx, cs.fdp, y, yp, ydp, ny, nyp, nydp, cs.npts)
-    y[1]::Float64
+
+    _interp!(x, cs.x, cs.fx, cs.fdp, cs.npts, 1, 0, 0, y, yp, ydp)
+#     ccall((:__procedures_MOD_interp, "spline1"), Void,
+# (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
+#     point, cs.x, cs.fx, cs.fdp, y, yp, ydp, ny, nyp, nydp, cs.npts)
+     y[1]
 end
 
 #function interp_level{T<:Float64, CS <: CubicSpline{T}}(cs::CS, x::ForwardDiff.Dual{T})
