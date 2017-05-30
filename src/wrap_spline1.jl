@@ -15,7 +15,7 @@ type MutableCubicSpline{T<:Real} <: CubicSpline{T}
     dirty::Bool
 end
 
-const spline_lib = Pkg.dir()*"/CubicSplineNR/lib/spline1"
+const spline_lib = Pkg.dir()*"\CubicSplineNR\lib\spline1"
 
 """
     _dodp!(...)
@@ -114,7 +114,7 @@ function interp_level{T<:Float64, CS <: CubicSpline{Float64}}(cs::CS, x::Forward
     y = zeros(1)
     yp = zeros(1)
     ydp = zeros(1)
-    
+
     ccall((:__procedures_MOD_interp, "spline1"), Void,
 (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}, Ptr{Cint}),
     point, cs.x, cs.fx, cs.fdp, y, yp, ydp, ny, nyp, nydp, cs.npts)
